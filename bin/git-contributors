@@ -10,18 +10,22 @@ OptionParser.new do |opts|
   opts.banner = "Usage: git contributors [folders] [options]"
 
   opts.on("--org [ORG]", "Get contributors for an organization") do |v|
-    GitContributors.for_github_org v
+    options[:org] = v
   end
 
   opts.on("-t", "--format [FORMAT]",
     "Formatting string to use (default: #{options[:format].inspect})",
-    "Available formats: %LOGIN %NAME %AVATAR %CONTRIBUTIONS %REPOS"
+    "Available formats: %LOGIN %NAME %AVATAR %CONTRIBUTIONS %REPOS %URL"
       ) do |v|
     options[:format] = v
   end
 end.parse!
 
 ARGV.each do |folder|
-  gt = GitContributors.new('.')
+  gt = GitContributors.for_path folder
   gt.print_contributors options
+end
+
+unless options[:org].nil?
+  GitContributors.for_github_org(options[:org]).print_contributors(options)
 end
