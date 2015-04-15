@@ -54,7 +54,7 @@ class GitContributors
       # progress indication
       print (@users[uid].nil? ? '+' : '.')
       # get the user, if we don't have his/her data yet
-      @users[uid] ||= @github.user(uid)
+      @users[uid] ||= sanitize_user( @github.user(uid) )
       # get or set user stats
       if @users[uid]['stats'].nil?
         @users[uid]['stats'] = uinfo
@@ -66,6 +66,11 @@ class GitContributors
       end
     end
     print "\n"
+  end
+
+  def sanitize_user u
+    u['name'] ||= u['login']
+    u
   end
 
   def print_contributors opts
