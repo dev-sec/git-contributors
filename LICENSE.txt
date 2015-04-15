@@ -1,4 +1,4 @@
-Copyright (c) 2014 Dominik Richter
+Copyright (c) 2014-15 Dominik Richter
 
 MIT License
 
