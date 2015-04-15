@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'zlog'
 require 'git-issues'
+
 Zlog.init_stdout loglevel: :debug
 Log = Logging.logger[self]
 
@@ -15,17 +16,8 @@ require 'rest-client'
 require 'json'
 require 'diffy'
 require 'inquirer'
-url = "https://api.github.com/repos/#{user}/#{repo}/contributors"
-p "get #{url}"
-res = RestClient.get url
-users = JSON.load(res)
 
 class Readme
-  IGNORE = ['lollyrocker']
-  REPLACE = {
-    "Bernhard Weisshuhn (a.k.a. bernhorst)" => "Bernhard K. Weisshuhn"
-  }
-
   def initialize path = 'README.md'
     @path = path
     @old = File::read path
@@ -33,7 +25,7 @@ class Readme
     @users = {}
   end
 
-  def ensure_user user, stats
+  def ensure_user user
     login = user['login']
     if @users.key? login
       puts "ww user already defined: #{login}"
@@ -43,20 +35,19 @@ class Readme
       puts ".. ignoring #{login}"
     else
       puts "++ #{login}"
-      user['stats'] = stats
       @users[login] = user
     end
   end
- 
+
   def save
     nu_contribs = @users.values.
       sort_by{|x| -x['stats']['contributions']}.
       map do |x|
         (x['name'] || '') + " ["+x['login']+"]("+x['html_url']+")"
       end.join("\n* ")
-    
+
     nu = @old.sub(@replacer, "\n* " + nu_contribs)
-    
+
     puts Diffy::Diff.new( @old, nu, context: 2 ).to_s
     if Ask.confirm "Save this?", default: false
       File::write @path, nu
@@ -67,16 +58,33 @@ class Readme
 
   def contrib_string
     m = @old.match /(?:\n## Contributors[^\n]*\n)(?<names>(\n\* [^\n]+)+)/
+    return '' if m.nil?
     m['names']
   end
 
 end
 
-if File::file? 'README.md'
+url = "https://api.github.com/repos/#{user}/#{repo}/contributors"
+res = RestClient.get url
+userlist = JSON.load(res)
+puts "#{userlist.length} users"
+puts "-------------------------------------------------------------------------------"
+puts "| Github ID            |                                                      |"
+puts "-------------------------------------------------------------------------------"
+users = userlist.map do |uinfo|
+  r = JSON.load( RestClient.get uinfo['url'] )
+  r['stats'] = uinfo
+  puts sprintf("* %-20s   %-53s", r['login'], r['name'])
+  r
+end
+puts ""
+
+if File::file? 'README.md' &&
+  Ask.confirm("Add users to readme?", default: false)
+
   readme = Readme.new
-  users.map do |x|
-    user = JSON.load( RestClient.get x['url'] )
-    readme.ensure_user user, x
+  users.map do |user|
+    readme.ensure_user user
   end
   readme.save
 end
