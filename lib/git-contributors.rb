@@ -1,48 +1,81 @@
 require 'git-issues'
+require 'git-issues/providers'
 require 'rest-client'
 require 'json'
 require 'inquirer'
 require 'zlog'
 Zlog.init_stdout loglevel: :debug
 
-
 class GitContributors
   Log = Logging.logger[self]
   VERSION = "0.0.1"
   FORMAT = '* %-20LOGIN   %-53NAME'
+  PROVIDERS = RepoProviders.new
 
-  def initialize path
-    gi = GitIssues.new
-    prov = gi.gitReposFor(path)
-    Log.abort "no github repo here?" if prov.empty?
-
-    @path = path
-    @user = prov[0].repo['user']
-    @repo = prov[0].repo['repo'].sub(/\.git/,'')
+  def initialize owner, repo
+    @user = owner
+    @repo = repo
     @users = nil
   end
 
-  def load_contributors
-    url = "https://api.github.com/repos/#{@user}/#{@repo}/contributors"
-    res = RestClient.get url
-    userlist = JSON.load(res)
+  def self.for_github_org org
+    github = RepoProvider::Github.new.provider
+    repos = github.org_repositories('hardening-io')
 
-    print "Load #{userlist.length} contributors for #{@path}"
+    contributors = {}
+    contribs = repos.map do |repo|
+      GitContributors.new org, repo['name']
+    end.each do |contrib|
+      contrib.users.each do |u|
+        contributors[u['login']] ||= u
+        o = contributors[u['login']]
+        o['stats']['repos'] ||= 0
+        o['stats']['repos'] += 1
+        o['stats']['contributions'] += (u['stats']['contributions'] || 0)
+      end
+    end
+
+    gc = GitContributors.new nil, nil
+    gc.users = contributors
+    gc.print_contributors
+  end
+
+  def self.for_path path
+    gi = GitIssues.new
+    prov = gi.gitReposFor(path)
+    Log.abort "no github repo here?" if prov.empty?
+    user = prov[0].repo['user']
+    repo = prov[0].repo['repo'].sub(/\.git/,'')
+    GitContributors.new user, repo
+  end
+
+  def users
+    @users || load_contributors
+  end
+  def users= u
+    @users = u
+  end
+
+  def load_contributors
+    github = RepoProvider::Github.new.provider
+    userlist = github.contributors("#{@user}/#{@repo}")
+
+    print "Load #{userlist.length} contributors for #{@user}/#{@repo}"
     @users = userlist.map do |uinfo|
-      r = JSON.load( RestClient.get uinfo['url'] )
+      r = github.user(uinfo['login'])
       r['stats'] = uinfo
       print '.'
       r
     end
     print "\n"
+    @users
   end
 
   def print_contributors opts
-    @users || load_contributors
     format = opts[:format] || FORMAT
 
     puts
-    @users.each do |user|
+    users.each do |user|
       puts format_user_string(format, user)
     end
     puts
@@ -56,7 +89,9 @@ class GitContributors
       'name' => /(%[+-]?\d*)NAME/,
       'avatar_url' => /(%[+-]?\d*)AVATAR/,
       'stats.contributions' => /(%[+-]?\d*)CONTRIBUTIONS/,
+      'stats.repos' => /(%[+-]?\d*)REPOS/,
     }
+
     # format array contains the position
     # and value that will be inserted into
     # the format string
@@ -65,7 +100,7 @@ class GitContributors
         # get the position and value that
         # will be inserted
         value = key.split('.').reduce(user){|acc,x|acc[x]}
-        [ format =~ re, value ]
+        [ format =~ re, value || '' ]
       end.find_all do |x|
         # remove all entries that the user
         # didn't specify
