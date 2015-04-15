@@ -35,4 +35,5 @@ Or use bundler
 ## Copyright
 
 Copyright (c) 2014-15 Dominik Richter
+
 Licensed under MIT
