@@ -53,7 +53,9 @@ class GitContributors
   def format_user_string format, user
     format_REs = {
       'login' => /(%[+-]?\d*)LOGIN/,
-      'name' => /(%[+-]?\d*)NAME/
+      'name' => /(%[+-]?\d*)NAME/,
+      'avatar_url' => /(%[+-]?\d*)AVATAR/,
+      'stats.contributions' => /(%[+-]?\d*)CONTRIBUTIONS/,
     }
     # format array contains the position
     # and value that will be inserted into
@@ -62,7 +64,8 @@ class GitContributors
       map do |key, re|
         # get the position and value that
         # will be inserted
-        [ format =~ re, user[key] ]
+        value = key.split('.').reduce(user){|acc,x|acc[x]}
+        [ format =~ re, value ]
       end.find_all do |x|
         # remove all entries that the user
         # didn't specify

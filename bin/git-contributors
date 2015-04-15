@@ -9,7 +9,10 @@ options = {
 OptionParser.new do |opts|
   opts.banner = "Usage: git contributors [folders] [options]"
 
-  opts.on("-t", "--format=F", "Formatting string to use (default: #{options[:format].inspect}") do |v|
+  opts.on("-t", "--format [FORMAT]",
+    "Formatting string to use (default: #{options[:format].inspect})",
+    "Available formats: %LOGIN %NAME %AVATAR %CONTRIBUTIONS"
+      ) do |v|
     options[:format] = v
   end
 end.parse!
