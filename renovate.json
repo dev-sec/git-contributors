@@ -11,5 +11,17 @@
       "matchUpdateTypes": ["patch", "minor"],
       "automerge": true
     }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "^*.gemspec"
+      ],
+      "matchStrings": [
+        ".*\\.add_(:?(?<depType>.*?)_)?dependency\\s*(['\"])(?<depName>[^'\"]+)(['\"])(\\s*,\\s*(?<currentValue>(['\"])[^'\"]+['\"](\\s*,\\s*['\"][^'\"]+['\"])?))?"
+      ],
+      "datasourceTemplate": "rubygems",
+      "versioningTemplate": "ruby"
+    }
   ]
 }
