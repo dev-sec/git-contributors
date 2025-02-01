@@ -26,5 +26,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'git-issues', '~> 0'
   spec.add_dependency 'rest-client', '~> 1'
   spec.add_dependency 'zlog', '~> 0'
-  spec.add_dependency 'json', '~> 1.8'
+  spec.add_dependency 'json', '~> 2.3'
 end
